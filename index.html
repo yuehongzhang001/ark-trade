@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>TSLA 交易数据展示</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: center; }
+        th { background: #f4f4f4; }
+        tr:nth-child(even) { background: #fafafa; }
+        .filter-bar { margin-bottom: 20px; }
+        .filter-bar input { padding: 4px 8px; }
+        .filter-bar button { padding: 4px 12px; }
+    </style>
+</head>
+<body>
+    <h1 id="page-title">TSLA 交易数据展示</h1>
+    <div class="filter-bar">
+        <label>股票代码:
+            <select id="symbol">
+                <option value="TSLA">TSLA</option>
+                <option value="NVDA">NVDA</option>
+            </select>
+        </label>
+        <label>开始日期: <input type="date" id="date_from"></label>
+        <label>结束日期: <input type="date" id="date_to"></label>
+        <button id="searchBtn">查询</button>
+    </div>
+    <div id="info"></div>
+    <table id="trades-table">
+        <thead>
+            <tr>
+                <th>日期</th>
+                <th>基金</th>
+                <th>方向</th>
+                <th>股数</th>
+                <th>ETF占比(%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 数据行将由JS填充 -->
+        </tbody>
+    </table>
+    <script>
+        function fetchAndRender(date_from = '', date_to = '', symbol = 'TSLA') {
+            let url = `https://arkfunds.io/api/v2/stock/trades?symbol=${symbol}`;
+            if (date_from) url += `&date_from=${date_from}`;
+            if (date_to) url += `&date_to=${date_to}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    // 动态修改标题
+                    document.getElementById('page-title').textContent = `${data.symbol} 交易数据展示`;
+                    document.getElementById('info').innerHTML = `
+                        <strong>股票代码：</strong> ${data.symbol} &nbsp;&nbsp;
+                        <strong>日期范围：</strong> ${data.date_from || ''} ~ ${data.date_to || ''}
+                    `;
+                    const tbody = document.querySelector('#trades-table tbody');
+                    tbody.innerHTML = '';
+                    data.trades.forEach(trade => {
+                        const tr = document.createElement('tr');
+                        let bgColor = '';
+                        if (trade.direction === 'Buy') bgColor = '#fff8b3';      // 黄色
+                        if (trade.direction === 'Sell') bgColor = '#ffb366';     // 橙色
+                        tr.innerHTML = `
+                            <td>${trade.date || ''}</td>
+                            <td>${trade.fund || ''}</td>
+                            <td style="background-color:${bgColor}">${trade.direction || ''}</td>
+                            <td>${trade.shares || ''}</td>
+                            <td>${trade.etf_percent || ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(err => {
+                    document.getElementById('info').textContent = '加载数据失败: ' + err;
+                });
+        }
+
+        // 初始加载全部数据
+        fetchAndRender();
+
+        // 查询按钮事件
+        document.getElementById('searchBtn').onclick = function() {
+            const date_from = document.getElementById('date_from').value;
+            const date_to = document.getElementById('date_to').value;
+            const symbol = document.getElementById('symbol').value;
+            fetchAndRender(date_from, date_to, symbol);
+        };
+
+        // 股票代码选择后立即生效
+        document.getElementById('symbol').onchange = function() {
+            const date_from = document.getElementById('date_from').value;
+            const date_to = document.getElementById('date_to').value;
+            const symbol = document.getElementById('symbol').value;
+            fetchAndRender(date_from, date_to, symbol);
+        };
+    </script>
+</body>
+</html>
